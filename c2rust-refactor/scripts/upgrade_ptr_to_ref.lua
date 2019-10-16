@@ -1264,6 +1264,10 @@ function Visitor:visit_local(locl)
     self:add_var(pat_hirid, Variable.new(local_id, "local"))
 end
 
+function is_empty(tbl)
+    return next(tbl) == nil
+end
+
 -- The MarkConverter takes marks and processes them into ConvCfgs
 MarkConverter = {}
 
@@ -1297,7 +1301,7 @@ function MarkConverter:flat_map_param(param)
     end
 
     -- Skip if there are no marks
-    if next(marks) == nil then
+    if is_empty(marks) then
         return {param}
     end
 
@@ -1325,7 +1329,7 @@ function MarkConverter:visit_local(locl)
     end
 
     -- Skip if there are no marks
-    if next(marks) == nil then return end
+    if is_empty(marks) then return end
 
     self.node_id_cfgs[id] = ConvCfg.from_marks(marks, attrs)
 end
@@ -1348,7 +1352,7 @@ function MarkConverter:flat_map_item(item, walk)
 
             local marks = self.marks[ty_id] or {}
 
-            if next(marks) ~= nil then
+            if not is_empty(marks) then
                 self.node_id_cfgs[field_id] = ConvCfg.from_marks(marks, field:get_attrs())
             end
         end
@@ -1378,19 +1382,13 @@ function MarkConverter:flat_map_stmt(stmt, walk)
             local marks = self.marks[local_ty_id]
             local is_mut = false
 
-            for _, mark in ipairs(marks) do
-                if mark == "mut" then
-                    is_mut = true
-                end
-            end
-
-            if is_mut then
+            if marks["mut"] then
                 local pat = locl:get_pat()
 
                 self.lhs_ident = pat:get_ident()
                 self.rhs_ident = path_to_last_segment(init:get_path())
                 self.local_stmt_id = stmt:get_id()
-                self.local_id = local_id
+                self.local_id = locl:get_id()
 
                 walk(stmt)
                 return {stmt}
